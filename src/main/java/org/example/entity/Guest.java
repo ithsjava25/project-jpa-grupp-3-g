@@ -2,6 +2,9 @@ package org.example.entity;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "Guests")
 
@@ -9,10 +12,6 @@ public class Guest {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne
-    @JoinColumn(name="booking_id", nullable = false)
-    private Booking bookingId;
 
     @Column(name="Name", nullable = false)
     private String name;
@@ -23,6 +22,9 @@ public class Guest {
     @Column(name="Contact_info", nullable = false)
     private String contact;
 
+    @ManyToMany(mappedBy = "guests")
+    private List<Booking> bookings = new ArrayList<>();
+
     public Guest(String name, String note, String contact){
         this.name = name;
         this.note = note;
@@ -30,6 +32,40 @@ public class Guest {
     }
 
     public Guest(){}
+
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public String getContact() {
+        return contact;
+    }
+
+    public void setContact(String contact) {
+        this.contact = contact;
+    }
+
+    public List<Booking> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<Booking> bookings) {
+        this.bookings = bookings;
+    }
 
     public void setId(Long id) {
         this.id = id;

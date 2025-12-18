@@ -16,7 +16,7 @@ public class App {
             try {
                 em.getTransaction().begin();
                 //BookingTable bookingTable = new BookingTable(6, 8);
-                Booking booking = new Booking(2L, LocalDateTime.now(), 6);
+                Booking booking = new Booking();
                 //Guest guest = new Guest();
                 em.persist(booking);
                 em.getTransaction().commit();
