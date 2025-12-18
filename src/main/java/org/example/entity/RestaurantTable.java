@@ -7,16 +7,16 @@ import java.util.List;
 
 
 @Entity
-@Table(name = "Tables")
+@Table(name = "restaurant_tables")
 
-public class Table {
+public class RestaurantTable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
     @JoinColumn(name = "table_id")
-    private Table table;
+    private RestaurantTable restaurantTable;
 
    @OneToMany(mappedBy = "table", cascade = CascadeType.PERSIST)
    private List<Booking> bookings = new ArrayList<>();
@@ -25,23 +25,23 @@ public class Table {
     @Column(name="table_number", nullable = false, unique = true)
     private int tableNumber;
 
-    @Column(name="Capacity", nullable = false)
+    @Column(name="capacity", nullable = false)
     private int capacity;
 
-    public Table getTable() {
-        return table;
+    public RestaurantTable getTable() {
+        return restaurantTable;
     }
 
-    public void setTable(Table table) {
-        this.table = table;
+    public void setTable(RestaurantTable restaurantTable) {
+        this.restaurantTable = restaurantTable;
     }
 
-    public Table( int capacity, int tableNumber){
+    public RestaurantTable(int capacity, int tableNumber){
         this.capacity = capacity;
         this.tableNumber = tableNumber;
     }
 
-    public Table() {}
+    public RestaurantTable() {}
 
     public void setId(Long id) {
         this.id = id;

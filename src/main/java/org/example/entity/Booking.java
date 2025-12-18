@@ -13,7 +13,7 @@ public class Booking {
 
     @ManyToOne
     @JoinColumn(name="TableId", nullable = false)
-    private Table table;
+    private RestaurantTable restaurantTable;
 
 
 

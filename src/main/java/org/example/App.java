@@ -4,8 +4,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import org.example.entity.Booking;
-import org.example.entity.Table;
-import org.example.entity.Guest;
 
 import java.time.LocalDateTime;
 
