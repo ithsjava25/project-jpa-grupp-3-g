@@ -123,9 +123,6 @@ public class App {
     private static List<Class<?>> getEntities(String pkg) {
         List<Class<?>> entities;
 
-        //Esto es para scannear todas las entities clases que existen en tal paquete. Es para no hacerlo uno por uno
-        //Agregar dependency
-
         try (ScanResult scanResult =
                  new ClassGraph()
                      .enableClassInfo()
