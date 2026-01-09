@@ -1,51 +1,169 @@
 package org.example;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ScanResult;
+import jakarta.persistence.*;
 import org.example.entity.*;
+import org.example.entity.Table;
+import org.hibernate.jpa.HibernatePersistenceConfiguration;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 public class App {
-    public static void main(String[] args) {
-        try (EntityManagerFactory emf = Persistence.createEntityManagerFactory("restaurantPU");
-             EntityManager em = emf.createEntityManager()) {
+    static void main(String[] args) {
 
-            try {
-                em.getTransaction().begin();
+        List<Class<?>> entities = getEntities("org.example.entity");
 
-                RestaurantTable table2 = new RestaurantTable("T2", 5);
-                em.persist(table2);
+        final PersistenceConfiguration cfg = new HibernatePersistenceConfiguration("emf")
+            .jdbcUrl("jdbc:mysql://localhost:3306/restaurant_booking")
+            .jdbcUsername("root")
+            .jdbcPassword("root123")
 
-                Guest guest3 = new Guest("Martin Martinsson", "martin@hotmail.se", "0707939910", "Gillar äpplen");
-                Booking booking = new Booking(
-                    table2,
-                    LocalDateTime.now().plusDays(1).withHour(18).withMinute(0),
-                    4
-                );
-                booking.addGuest(guest3);
+            .property("hibernate.connection.provider_class", "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
 
-                booking.confirm();
-                em.persist(booking);
+            .property("hibernate.hikari.maximumPoolSize", "10") //Max antal anslutningar
+            .property("hibernate.hikari.minimumIdle", "5") //Minsta antal lediga anslutningar
+            .property("hibernate.hikari.idleTimeout", "300000") // 5 minuter innan ledig anslutning stängs
+            .property("hibernate.hikari.connectionTimeout", "20000") // Max väntetid på anslutning (20s)
 
-                em.getTransaction().commit();
+            .property("hibernate.hbm2ddl.auto", "create")
+            .property("hibernate.show_sql", "true")
+            .property("hibernate.format_sql", "true")
+            .property("hibernate.highlight_sql", "true")
+            .managedClasses(entities);
 
-                System.out.println("Data created successfully!");
-                System.out.println(table2);
-                System.out.println(booking);
-                System.out.println("Guests in booking: " + booking.getGuests().size());
+        try (EntityManagerFactory emf = cfg.createEntityManagerFactory()) {
 
-            } catch (Exception e) {
-                if (em.getTransaction().isActive()) {
-                    em.getTransaction().rollback();
-                }
-                throw e;
+            hours(emf);
+            createTable(emf);
+            createGuest(emf);
+            mainMenu();
+
+
+            //Show all the hours available
+            emf.runInTransaction(em -> {
+                var query = em.createQuery("select h from TimeSlot h");
+                query.getResultList().forEach(System.out::println);
+            });
+
+        }
+
+    }
+
+    private static void createGuest (EntityManagerFactory emf){
+        emf.runInTransaction(em -> {
+
+            Guest guest = new Guest("Gabriela", "Bord för fyra", "072762668");
+            em.persist(guest);
+
+            guest = new Guest("Samuel", "Bord för 3", "072778882");
+            em.persist(guest);
+
+        });
+    }
+
+    private static void createTable(EntityManagerFactory emf) {
+        emf.runInTransaction(em -> {
+
+            Table table = new Table();
+            table.setTableNumber("1");
+            table.setCapacity(4);
+            em.persist(table);
+
+            table = new Table();
+            table.setTableNumber("2");
+            table.setCapacity(2);
+            em.persist(table);
+
+            table = new Table();
+            table.setTableNumber("3");
+            table.setCapacity(3);
+            em.persist(table);
+
+            table = new Table();
+            table.setTableNumber("4");
+            table.setCapacity(6);
+            em.persist(table);
+
+            table = new Table();
+            table.setTableNumber("5");
+            table.setCapacity(2);
+            em.persist(table);
+
+        });
+    }
+
+    private static void hours(EntityManagerFactory emf){
+        emf.runInTransaction(em -> {
+
+            TimeSlot hour = new TimeSlot("16:00", "18:00");
+            em.persist(hour);
+
+            hour = new TimeSlot("16:30", "18:30");
+            em.persist(hour);
+
+            hour = new TimeSlot("17:00", "19:00");
+            em.persist(hour);
+
+            hour = new TimeSlot("17:30", "19:30");
+            em.persist(hour);
+
+            hour = new TimeSlot("18:00", "20:00");
+            em.persist(hour);
+
+            hour = new TimeSlot("18:30", "20:30");
+            em.persist(hour);
+
+            hour = new TimeSlot("19:00", "21:00");
+            em.persist(hour);
+
+        });
+    }
+
+    private static List<Class<?>> getEntities(String pkg) {
+        List<Class<?>> entities;
+
+        //Esto es para scannear todas las entities clases que existen en tal paquete. Es para no hacerlo uno por uno
+        //Agregar dependency
+
+        try (ScanResult scanResult =
+                 new ClassGraph()
+                     .enableClassInfo()
+                     .enableAnnotationInfo()
+                     .acceptPackages(pkg)
+                     .scan()) {
+            entities = scanResult.getClassesWithAnnotation(Entity.class).loadClasses();
+        }
+        return entities;
+    }
+
+    public static void mainMenu() {
+        boolean running = true;
+        while (running) {
+            String select;
+
+            String menu = """
+                1 CREATE BOOKING
+                2 UPDATE BOOKING
+                3 READ BOOKING
+                4 DELETE BOOKING
+
+                CREATE TABLES*
+                CREATE GUESTS*
+
+                7 EXIT
+                """;
+            select = IO.readln(menu).toLowerCase();
+
+            switch (select) {
+                case "create booking", "cb", "1" -> System.out.println("1");
+                case "update booking", "ub", "2" -> System.out.println("2");
+                case "read booking", "rb", "3" -> System.out.println("3");
+                case "delete booking", "db", "4" -> System.out.println("4");
+                case "7" -> running = false;
+                default -> mainMenu();
             }
-
-        } catch (Exception e) {
-            System.err.println("Error:");
-            e.printStackTrace();
         }
     }
+
 }
