@@ -76,9 +76,6 @@ public class Booking {
     public void noShowBooking(){
         this.status = BookingStatus.NO_SHOW;
     }
-
-    public void setStatus(BookingStatus status) {}
-
     public Booking() {}
 
     public LocalDate getDate() {
