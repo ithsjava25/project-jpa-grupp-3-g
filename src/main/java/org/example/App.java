@@ -55,7 +55,7 @@ public class App {
             hours(emf);
             createTable(emf);
             createGuest(emf);
-            System.out.println("✅ Initial data created!");
+            System.out.println("Initial data created!");
         }
     }
 
@@ -130,10 +130,10 @@ public class App {
                 case "view tables", "5" -> viewTables(bookingService);
                 case "view guests", "6" -> viewGuests(bookingService);
                 case "exit", "7" -> {
-                    System.out.println("👋 Goodbye!");
+                    System.out.println("Goodbye!");
                     running = false;
                 }
-                default -> System.out.println("❌ Invalid option!");
+                default -> System.out.println("Invalid option!");
             }
         }
     }
@@ -178,7 +178,7 @@ public class App {
         try {
             bookingService.createBooking(tableId, timeSlotId, date, partySize, guestIds);
         } catch (Exception e) {
-            System.out.println("❌ Error: " + e.getMessage());
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -214,10 +214,10 @@ public class App {
             try {
                 bookingService.updateBookingStatus(bookingId, newStatus);
             } catch (Exception e) {
-                System.out.println("❌ Error: " + e.getMessage());
+                System.out.println("Error: " + e.getMessage());
             }
         } else {
-            System.out.println("❌ Invalid status!");
+            System.out.println("Invalid status!");
         }
     }
 
@@ -229,7 +229,7 @@ public class App {
             System.out.println("No bookings found.");
         } else {
             bookings.forEach(b -> {
-                System.out.println("\n📅 Booking ID: " + b.getId());
+                System.out.println("\n Booking ID: " + b.getId());
                 System.out.println("   Date: " + b.getDate());
                 System.out.println("   Time: " + b.getTimeSlot().getStartTime() + " - " + b.getTimeSlot().getFinishTime());
                 System.out.println("   Table: " + b.getTable().getTableNumber());
@@ -252,10 +252,10 @@ public class App {
             try {
                 bookingService.deleteBooking(bookingId);
             } catch (Exception e) {
-                System.out.println("❌ Error: " + e.getMessage());
+                System.out.println("Error: " + e.getMessage());
             }
         } else {
-            System.out.println("❌ Deletion cancelled.");
+            System.out.println("Deletion cancelled.");
         }
     }
 
