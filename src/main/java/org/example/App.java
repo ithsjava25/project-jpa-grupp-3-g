@@ -335,6 +335,12 @@ public class App {
 
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to delete: "));
+
+            if(!bookingIdList.contains(bookingId)) {
+                System.out.println("Invalid ID");
+                return;
+            }
+
             String confirm = IO.readln("Are you sure? (y/n): ");
 
             if (confirm.equalsIgnoreCase("y")) {
