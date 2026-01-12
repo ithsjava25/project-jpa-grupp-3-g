@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class App {
+
+    static List<Long> timeSlotIdList = new ArrayList<>();
+
     public static void main(String[] args) {
 
         List<Class<?>> entities = getEntities("org.example.entity");
@@ -40,6 +43,11 @@ public class App {
 
             // Starta huvudmeny
             BookingService bookingService = new BookingService(emf);
+
+            //Skapar en lista av IDn för felhantering vid bokning
+            var tempTimeSlotList = bookingService.getAllTimeSlots();
+            tempTimeSlotList.forEach(ts -> timeSlotIdList.add(ts.getId()));
+
             mainMenu(bookingService, emf);
 
         }
@@ -155,6 +163,11 @@ public class App {
             timeSlots.forEach(ts -> System.out.println("  " + ts.getId() + ". " + ts.getStartTime() + " - " + ts.getFinishTime()));
 
             Long timeSlotId = Long.parseLong(IO.readln("\nEnter TimeSlot ID: "));
+
+            if(!timeSlotIdList.contains(timeSlotId)){
+                System.out.println("Invalid Timeslot");
+                return;
+            }
 
             // Datum med validering
             LocalDate date = null;
