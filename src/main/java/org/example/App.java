@@ -15,6 +15,7 @@ import java.util.List;
 
 public class App {
 
+    static List<Long> tableIdList = new ArrayList<>();
     static List<Long> timeSlotIdList = new ArrayList<>();
 
     public static void main(String[] args) {
@@ -44,7 +45,9 @@ public class App {
             // Starta huvudmeny
             BookingService bookingService = new BookingService(emf);
 
-            //Skapar en lista av IDn för felhantering vid bokning
+            //Skapar två listor av IDn för felhantering vid bokning
+            var tempTableList = bookingService.getAllTables();
+            tempTableList.forEach(t -> tableIdList.add(t.getId()));
             var tempTimeSlotList = bookingService.getAllTimeSlots();
             tempTimeSlotList.forEach(ts -> timeSlotIdList.add(ts.getId()));
 
@@ -156,6 +159,11 @@ public class App {
             tables.forEach(t -> System.out.println("  " + t.getId() + ". Table " + t.getTableNumber() + " (Capacity: " + t.getCapacity() + ")"));
 
             Long tableId = Long.parseLong(IO.readln("\nEnter Table ID: "));
+
+            if(!tableIdList.contains(tableId)){
+                System.out.println("Invalid Table");
+                return;
+            }
 
             // Visa tillgängliga tider
             List<TimeSlot> timeSlots = bookingService.getAllTimeSlots();
