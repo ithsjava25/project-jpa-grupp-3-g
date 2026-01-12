@@ -17,6 +17,7 @@ public class App {
 
     static List<Long> tableIdList = new ArrayList<>();
     static List<Long> timeSlotIdList = new ArrayList<>();
+    static List<Long> bookingIdList = new ArrayList<>();
 
     public static void main(String[] args) {
 
@@ -45,11 +46,13 @@ public class App {
             // Starta huvudmeny
             BookingService bookingService = new BookingService(emf);
 
-            //Skapar två listor av IDn för felhantering vid bokning
+            //Skapar listor av IDn för felhantering vid bokning
             var tempTableList = bookingService.getAllTables();
             tempTableList.forEach(t -> tableIdList.add(t.getId()));
             var tempTimeSlotList = bookingService.getAllTimeSlots();
             tempTimeSlotList.forEach(ts -> timeSlotIdList.add(ts.getId()));
+            var tempBookingIdList = bookingService.getAllBookings();
+            tempBookingIdList.forEach(b -> bookingIdList.add(b.getId()));
 
             mainMenu(bookingService, emf);
 
@@ -275,6 +278,11 @@ public class App {
 
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to update: "));
+
+            if(!bookingIdList.contains(bookingId)){
+                System.out.println("Invalid ID");
+                return;
+            }
 
             String statusMenu = """
 
