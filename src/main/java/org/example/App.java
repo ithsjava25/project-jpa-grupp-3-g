@@ -260,7 +260,10 @@ public class App {
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to update: "));
 
-            if(!bookingIdList.contains(bookingId)){
+            var tempBookingIdList = new ArrayList<Long>();
+            bookings.forEach(b ->tempBookingIdList.add(b.getId()));
+
+            if(!tempBookingIdList.contains(bookingId)){
                 System.out.println("Invalid ID");
                 return;
             }
@@ -314,7 +317,11 @@ public class App {
 
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to delete: "));
-            if(!bookingIdList.contains(bookingId)) {
+
+            var tempBookingId = new ArrayList<Long>();
+            bookings.forEach(b -> tempBookingId.add(b.getId()));
+
+            if(!tempBookingId.contains(bookingId)) {
                 System.out.println("Invalid ID");
                 return;
             }
@@ -322,6 +329,7 @@ public class App {
 
             if (confirm.equalsIgnoreCase("y")) {
                 bookingService.deleteBooking(bookingId);
+                bookingIdList.remove(bookingId);
             } else {
                 System.out.println("Deletion cancelled.");
             }
