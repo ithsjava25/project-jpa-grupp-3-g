@@ -5,6 +5,7 @@ import org.example.entity.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public class BookingService {
 
@@ -224,7 +225,7 @@ public class BookingService {
         );
     }
 
-    public Booking getBooking(Long id) {
+    public Optional<Booking> getBooking(Long id) {
         return emf.callInTransaction(em ->
             em.createQuery(
                     "SELECT b FROM Booking b " +
@@ -235,7 +236,8 @@ public class BookingService {
                     Booking.class
                 )
                 .setParameter("id", id)
-                .getSingleResult()
+                .getResultStream()
+                .findFirst()
         );
     }
 
@@ -290,11 +292,12 @@ public class BookingService {
                         "(SELECT b.table.id FROM Booking b " +
                         "WHERE b.date = :date " +
                         "AND b.timeSlot.id = :timeSlotId " +
-                        "AND b.status != 'CANCELLED')",
+                        "AND b.status != :cancelledStatus)",
                     Table.class
                 )
                 .setParameter("date", date)
                 .setParameter("timeSlotId", timeSlotId)
+                .setParameter("cancelledStatus", BookingStatus.CANCELLED)
                 .getResultList()
         );
     }
