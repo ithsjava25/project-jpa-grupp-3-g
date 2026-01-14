@@ -3,6 +3,7 @@ package org.example;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import org.example.config.HibernateConfig;
 import org.example.service.*;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.MySQLContainer;
@@ -42,7 +43,7 @@ class AppTest {
         properties.put("jakarta.persistence.jdbc.password", mysql.getPassword());
         properties.put("hibernate.hbm2ddl.auto", "create-drop");
 
-        emf = Persistence.createEntityManagerFactory("restaurantPU", properties);
+        emf = HibernateConfig.getEntityManagerFactory(properties);
     }
 
     @BeforeEach
