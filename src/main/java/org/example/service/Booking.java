@@ -1,4 +1,4 @@
-package org.example.entity;
+package org.example.service;
 
 import jakarta.persistence.*;
 
@@ -40,8 +40,7 @@ public class Booking {
         inverseJoinColumns = @JoinColumn (name = "guest_id"))
     private List<Guest> guests = new ArrayList<>();
 
-    public Booking(Long id, LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
-        this.id = id;
+    public Booking(LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
         this.date = date;
         this.timeSlot = timeSlot;
         this.partySize = partySize;
@@ -52,7 +51,7 @@ public class Booking {
     }
 
     public void addGuest(Guest guest){
-        guests.add(guest);
+        this.guests.add(guest);
         guest.getBookings().add(this);
     }
 

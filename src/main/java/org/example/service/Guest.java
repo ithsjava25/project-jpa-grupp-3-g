@@ -1,8 +1,7 @@
-package org.example.entity;
+package org.example.service;
 
 import jakarta.persistence.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 

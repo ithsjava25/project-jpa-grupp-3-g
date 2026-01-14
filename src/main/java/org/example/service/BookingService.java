@@ -1,7 +1,6 @@
 package org.example.service;
 
 import jakarta.persistence.EntityManagerFactory;
-import org.example.entity.*;
 
 import java.time.LocalDate;
 import java.util.List;

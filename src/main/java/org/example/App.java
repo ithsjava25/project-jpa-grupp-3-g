@@ -3,8 +3,8 @@ package org.example;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.ScanResult;
 import jakarta.persistence.*;
-import org.example.entity.*;
-import org.example.entity.Table;
+import org.example.service.*;
+import org.example.service.Table;
 import org.example.service.BookingService;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 
@@ -289,8 +289,6 @@ public class App {
             System.out.println("Invalid ID format!");
         }
     }
-
-
 
     private static void deleteBookingMenu(BookingService bookingService) {
         System.out.println("\n═══ DELETE BOOKING ═══");
