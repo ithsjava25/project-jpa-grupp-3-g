@@ -19,11 +19,15 @@ public class Booking {
     private LocalDate date; //day of the reservation
 
     @ManyToOne
-    @JoinColumn(name="timeslot_id")
+    @JoinColumn(name="timeslot_id", nullable = false)
     private TimeSlot timeSlot; //time selected from the determited times
 
     @Column(name="party_size", nullable = false)
     private int partySize;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private BookingStatus status = BookingStatus.PENDING;
 
     @ManyToOne
     @JoinColumn(name="table_id", nullable = false)
@@ -36,15 +40,6 @@ public class Booking {
         inverseJoinColumns = @JoinColumn (name = "guest_id"))
     private List<Guest> guests = new ArrayList<>();
 
-    public Booking(Long id, LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
-        this.id = id;
-        this.date = date;
-        this.timeSlot = timeSlot;
-        this.partySize = partySize;
-        this.table = table;
-        this.guests = guests;
-    }
-
     public void addGuest(Guest guest){
         guests.add(guest);
         guest.getBookings().add(this);
@@ -55,13 +50,29 @@ public class Booking {
         guest.getBookings().remove(this);
     }
 
+    public BookingStatus getStatus() {
+        return status;
+    }
+    public void confirmBooking(){
+        this.status = BookingStatus.CONFIRMED;
+    }
+    public void cancelBooking(){
+        this.status = BookingStatus.CANCELLED;
+    }
+    public void completeBooking(){
+        this.status = BookingStatus.COMPLETED;
+    }
+    public void pendingBooking() { this.status = BookingStatus.PENDING; }
+    public void noShowBooking(){
+        this.status = BookingStatus.NO_SHOW;
+    }
     public Booking() {}
 
     public LocalDate getDate() {
         return date;
     }
 
-    public void setTime(LocalDate time) {
+    public void setDate(LocalDate date) {
         this.date = date;
     }
 
@@ -77,7 +88,7 @@ public class Booking {
         return partySize;
     }
 
-    public void setParty(int party) {
+    public void setParty(int partySize) {
         this.partySize = partySize;
     }
 
@@ -110,10 +121,8 @@ public class Booking {
         return "Booking{" +
             "id=" + id +
             ", date=" + date +
-            ", timeSlot=" + timeSlot +
             ", party=" + partySize +
-            ", table=" + table +
-            ", guests=" + guests +
+            ", status=" + status +
             '}';
     }
 }

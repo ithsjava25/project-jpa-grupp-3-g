@@ -5,28 +5,29 @@ import io.github.classgraph.ScanResult;
 import jakarta.persistence.*;
 import org.example.entity.*;
 import org.example.entity.Table;
+import org.example.entity.service.BookingService;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class App {
-    static void main(String[] args) {
+    public static void main(String[] args) {
 
         List<Class<?>> entities = getEntities("org.example.entity");
 
         final PersistenceConfiguration cfg = new HibernatePersistenceConfiguration("emf")
             .jdbcUrl("jdbc:mysql://localhost:3306/restaurant_booking")
-            .jdbcUsername("root")
-            .jdbcPassword("root123")
-
+            .jdbcUsername(System.getenv("MYSQL_USER"))
+            .jdbcPassword(System.getenv("MYSQL_ROOT_PASSWORD"))
             .property("hibernate.connection.provider_class", "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
-
-            .property("hibernate.hikari.maximumPoolSize", "10") //Max antal anslutningar
-            .property("hibernate.hikari.minimumIdle", "5") //Minsta antal lediga anslutningar
-            .property("hibernate.hikari.idleTimeout", "300000") // 5 minuter innan ledig anslutning stängs
-            .property("hibernate.hikari.connectionTimeout", "20000") // Max väntetid på anslutning (20s)
-
-            .property("hibernate.hbm2ddl.auto", "create")
+            .property("hibernate.hikari.maximumPoolSize", "10")
+            .property("hibernate.hikari.minimumIdle", "5")
+            .property("hibernate.hikari.idleTimeout", "300000")
+            .property("hibernate.hikari.connectionTimeout", "20000")
+            .property("hibernate.hbm2ddl.auto", "update")
             .property("hibernate.show_sql", "true")
             .property("hibernate.format_sql", "true")
             .property("hibernate.highlight_sql", "true")
@@ -34,136 +35,313 @@ public class App {
 
         try (EntityManagerFactory emf = cfg.createEntityManagerFactory()) {
 
-            hours(emf);
-            createTable(emf);
-            createGuest(emf);
-            mainMenu();
+            // Skapa initial data om den inte finns
+            createInitialData(emf);
 
-
-            //Show all the hours available
-            emf.runInTransaction(em -> {
-                var query = em.createQuery("select h from TimeSlot h");
-                query.getResultList().forEach(System.out::println);
-            });
+            // Starta huvudmeny
+            BookingService bookingService = new BookingService(emf);
+            mainMenu(bookingService, emf);
 
         }
-
     }
 
-    private static void createGuest (EntityManagerFactory emf){
+    private static void createInitialData(EntityManagerFactory emf) {
+        // Kolla om data redan finns
+        Long count = emf.callInTransaction(em ->
+            em.createQuery("SELECT COUNT(ts) FROM TimeSlot ts", Long.class).getSingleResult()
+        );
+
+        if (count == 0) {
+            hours(emf);
+            createGuest(emf);
+            System.out.println("Initial data created!");
+            System.out.println("Create tables manually in the database if necessary!");
+        }
+    }
+
+    private static void createGuest(EntityManagerFactory emf) {
         emf.runInTransaction(em -> {
-
-            Guest guest = new Guest("Gabriela", "Bord för fyra", "072762668");
-            em.persist(guest);
-
-            guest = new Guest("Samuel", "Bord för 3", "072778882");
-            em.persist(guest);
-
+            em.persist(new Guest("Gabriela", "Bord för fyra", "072762668"));
+            em.persist(new Guest("Samuel", "Bord för 3", "072778882"));
+            em.persist(new Guest("Anna", "VIP", "0701234567"));
+            em.persist(new Guest("Erik", "Allergisk mot nötter", "0709876543"));
         });
     }
 
-    private static void createTable(EntityManagerFactory emf) {
+    private static void hours(EntityManagerFactory emf) {
         emf.runInTransaction(em -> {
-
-            Table table = new Table();
-            table.setTableNumber("1");
-            table.setCapacity(4);
-            em.persist(table);
-
-            table = new Table();
-            table.setTableNumber("2");
-            table.setCapacity(2);
-            em.persist(table);
-
-            table = new Table();
-            table.setTableNumber("3");
-            table.setCapacity(3);
-            em.persist(table);
-
-            table = new Table();
-            table.setTableNumber("4");
-            table.setCapacity(6);
-            em.persist(table);
-
-            table = new Table();
-            table.setTableNumber("5");
-            table.setCapacity(2);
-            em.persist(table);
-
-        });
-    }
-
-    private static void hours(EntityManagerFactory emf){
-        emf.runInTransaction(em -> {
-
-            TimeSlot hour = new TimeSlot("16:00", "18:00");
-            em.persist(hour);
-
-            hour = new TimeSlot("16:30", "18:30");
-            em.persist(hour);
-
-            hour = new TimeSlot("17:00", "19:00");
-            em.persist(hour);
-
-            hour = new TimeSlot("17:30", "19:30");
-            em.persist(hour);
-
-            hour = new TimeSlot("18:00", "20:00");
-            em.persist(hour);
-
-            hour = new TimeSlot("18:30", "20:30");
-            em.persist(hour);
-
-            hour = new TimeSlot("19:00", "21:00");
-            em.persist(hour);
-
+            String[] times = {"16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"};
+            for (String start : times) {
+                String[] parts = start.split(":");
+                int hour = Integer.parseInt(parts[0]) + 2;
+                String end = hour + ":" + parts[1];
+                em.persist(new TimeSlot(start, end));
+            }
         });
     }
 
     private static List<Class<?>> getEntities(String pkg) {
-        List<Class<?>> entities;
-
-        //Esto es para scannear todas las entities clases que existen en tal paquete. Es para no hacerlo uno por uno
-        //Agregar dependency
-
-        try (ScanResult scanResult =
-                 new ClassGraph()
-                     .enableClassInfo()
-                     .enableAnnotationInfo()
-                     .acceptPackages(pkg)
-                     .scan()) {
-            entities = scanResult.getClassesWithAnnotation(Entity.class).loadClasses();
+        try (ScanResult scanResult = new ClassGraph()
+            .enableClassInfo()
+            .enableAnnotationInfo()
+            .acceptPackages(pkg)
+            .scan()) {
+            return scanResult.getClassesWithAnnotation(Entity.class).loadClasses();
         }
-        return entities;
     }
 
-    public static void mainMenu() {
+    public static void mainMenu(BookingService bookingService, EntityManagerFactory emf) {
         boolean running = true;
         while (running) {
-            String select;
-
             String menu = """
-                1 CREATE BOOKING
-                2 UPDATE BOOKING
-                3 READ BOOKING
-                4 DELETE BOOKING
 
-                CREATE TABLES*
-                CREATE GUESTS*
-
-                7 EXIT
+                ╔════════════════════════════════════╗
+                ║     RESTAURANT BOOKING SYSTEM      ║
+                ╠════════════════════════════════════╣
+                ║ 1. CREATE BOOKING                  ║
+                ║ 2. UPDATE BOOKING                  ║
+                ║ 3. VIEW ALL BOOKINGS               ║
+                ║ 4. DELETE BOOKING                  ║
+                ║ 5. VIEW TABLES                     ║
+                ║ 6. VIEW GUESTS                     ║
+                ║ 7. EXIT                            ║
+                ╚════════════════════════════════════╝
                 """;
-            select = IO.readln(menu).toLowerCase();
+
+            String select = IO.readln(menu + "\nSelect option: ").toLowerCase();
 
             switch (select) {
-                case "create booking", "cb", "1" -> System.out.println("1");
-                case "update booking", "ub", "2" -> System.out.println("2");
-                case "read booking", "rb", "3" -> System.out.println("3");
-                case "delete booking", "db", "4" -> System.out.println("4");
-                case "7" -> running = false;
-                default -> mainMenu();
+                case "create booking", "cb", "1" -> createBookingMenu(bookingService);
+                case "update booking", "ub", "2" -> updateBookingMenu(bookingService);
+                case "view all bookings", "rb", "3" -> showBookings(bookingService);
+                case "delete booking", "db", "4" -> deleteBookingMenu(bookingService);
+                case "view tables", "5" -> viewTables(bookingService);
+                case "view guests", "6" -> viewGuests(bookingService);
+                case "exit", "7" -> {
+                    System.out.println("Goodbye!");
+                    running = false;
+                }
+                default -> System.out.println("Invalid option!");
             }
         }
     }
 
+    private static void createBookingMenu(BookingService bookingService) {
+        System.out.println("\n═══ CREATE NEW BOOKING ═══");
+
+        try {
+            // Visa tillgängliga bord
+            List<Table> tables = bookingService.getAllTables();
+            System.out.println("\n📋 Available Tables:");
+            tables.forEach(t -> System.out.println("  " + t.getId() + ". Table " + t.getTableNumber() + " (Capacity: " + t.getCapacity() + ")"));
+
+            Long tableId = Long.parseLong(IO.readln("\nEnter Table ID: "));
+
+            // Visa tillgängliga tider
+            List<TimeSlot> timeSlots = bookingService.getAllTimeSlots();
+            System.out.println("\n⏰ Available Time Slots:");
+            timeSlots.forEach(ts -> System.out.println("  " + ts.getId() + ". " + ts.getStartTime() + " - " + ts.getFinishTime()));
+
+            Long timeSlotId = Long.parseLong(IO.readln("\nEnter TimeSlot ID: "));
+
+            // Datum med validering
+            LocalDate date = null;
+            while (date == null) {
+                String dateStr = IO.readln("\nEnter date (YYYY-MM-DD): ");
+                try {
+                    date = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE);
+
+                    // Validera att datumet är korrekt
+                    LocalDate today = LocalDate.now();
+                    // hur många månader fram man kan boka(kan ä
+                    LocalDate maxDate = today.plusMonths(3);
+
+                    if (date.isBefore(today)) {
+                        System.out.println("Date cannot be in the past! Please enter a future date.");
+                        date = null;
+                    } else if (date.isAfter(maxDate)) {
+                        System.out.println("Date cannot be more than 3 months in the future! (Max: " + maxDate + ")");
+                        date = null;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Invalid date format! Please use YYYY-MM-DD");
+                }
+            }
+
+            // Antal gäster
+            int partySize = Integer.parseInt(IO.readln("\nEnter party size: "));
+
+            // Lägg till gäster
+            List<Long> guestIds = new ArrayList<>();
+            String addMore = "y";
+
+            while (addMore.equalsIgnoreCase("y")) {
+                System.out.println("\n👥 ADD GUEST:");
+                System.out.println("1. Select existing guest");
+                System.out.println("2. Create new guest");
+
+                String guestChoice = IO.readln("Choose option (1 or 2): ").trim();
+
+                if (guestChoice.equals("1")) {
+                    // Välj befintlig gäst
+                    List<Guest> guests = bookingService.getAllGuests();
+                    System.out.println("\n📋 Available Guests:");
+                    guests.forEach(g -> System.out.println("  " + g.getId() + ". " + g.getName() + " (" + g.getContact() + ")"));
+
+                    Long guestId = Long.parseLong(IO.readln("\nEnter Guest ID: "));
+                    guestIds.add(guestId);
+
+                } else if (guestChoice.equals("2")) {
+                    // Skapa ny gäst
+                    System.out.println("\n═══ CREATE NEW GUEST ═══");
+                    String name = IO.readln("Enter guest name: ");
+                    String contact = IO.readln("Enter contact (phone/email): ");
+                    String note = IO.readln("Enter note (allergies, preferences, etc.): ");
+
+                    try {
+                        Long newGuestId = bookingService.createGuest(name, note, contact);
+                        guestIds.add(newGuestId);
+                        System.out.println("Guest created successfully!");
+                    } catch (Exception e) {
+                        System.out.println("Error creating guest: " + e.getMessage());
+                    }
+                } else {
+                    System.out.println("Invalid option! Please enter 1 or 2.");
+                    continue;
+                }
+
+                addMore = IO.readln("\nAdd another guest? (y/n): ").trim();
+            }
+
+            // Skapa bokning med validering
+            try {
+                bookingService.createBooking(tableId, timeSlotId, date, partySize, guestIds);
+            } catch (IllegalArgumentException e) {
+                System.out.println("Booking failed: " + e.getMessage());
+            }
+
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid input! Please enter valid numbers.");
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    private static void updateBookingMenu(BookingService bookingService) {
+        System.out.println("\n═══ UPDATE BOOKING ═══");
+
+        List<Booking> bookings = bookingService.getAllBookings();
+
+        if (bookings.isEmpty()) {
+            System.out.println("No bookings found to update.");
+            return;
+        }
+
+        // visar alla bokningar
+        showBookings(bookings);
+
+        try {
+            Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to update: "));
+
+            String statusMenu = """
+
+            Select new status:
+            1. PENDING
+            2. CONFIRMED
+            3. CANCELLED
+            4. COMPLETED
+            5. NO_SHOW
+            """;
+
+            String choice = IO.readln(statusMenu + "\nEnter choice: ");
+
+            BookingStatus newStatus = switch (choice) {
+                case "1" -> BookingStatus.PENDING;
+                case "2" -> BookingStatus.CONFIRMED;
+                case "3" -> BookingStatus.CANCELLED;
+                case "4" -> BookingStatus.COMPLETED;
+                case "5" -> BookingStatus.NO_SHOW;
+                default -> null;
+            };
+
+            if (newStatus != null) {
+                try {
+                    bookingService.updateBookingStatus(bookingId, newStatus);
+                } catch (Exception e) {
+                    System.out.println("Error: " + e.getMessage());
+                }
+            } else {
+                System.out.println("Invalid status!");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid ID format!");
+        }
+    }
+
+
+
+    private static void deleteBookingMenu(BookingService bookingService) {
+        System.out.println("\n═══ DELETE BOOKING ═══");
+
+        List<Booking> bookings = bookingService.getAllBookings();
+
+        if (bookings.isEmpty()) {
+            System.out.println("No bookings found to delete.");
+            return;
+        }
+        //Visar alla bokningar - metod längre ner
+        showBookings(bookings);
+
+        try {
+            Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to delete: "));
+            String confirm = IO.readln("Are you sure? (y/n): ");
+
+            if (confirm.equalsIgnoreCase("y")) {
+                bookingService.deleteBooking(bookingId);
+            } else {
+                System.out.println("Deletion cancelled.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid ID format!");
+        }
+    }
+
+    private static void showBookings(BookingService bookingService) {
+        System.out.println("\n═══ ALL BOOKINGS ═══");
+
+        List<Booking> bookings = bookingService.getAllBookings();
+
+        if (bookings.isEmpty()) {
+            System.out.println("📭 No bookings found.");
+            return;
+        }
+
+        showBookings(bookings);
+    }
+
+    private static void showBookings(List<Booking> bookings) {
+        bookings.forEach(b -> {
+            System.out.println("\n📅 Booking ID: " + b.getId());
+            System.out.println("   Date: " + b.getDate());
+            System.out.println("   Time: " + b.getTimeSlot().getStartTime() + " - " + b.getTimeSlot().getFinishTime());
+            System.out.println("   Table: " + b.getTable().getTableNumber());
+            System.out.println("   Party Size: " + b.getParty());
+            System.out.println("   Status: " + b.getStatus());
+            System.out.println("   Guests: " + b.getGuests().stream().map(Guest::getName).toList());
+        });
+    }
+
+    private static void viewTables(BookingService bookingService) {
+        System.out.println("\n═══ ALL TABLES ═══");
+        bookingService.getAllTables().forEach(t ->
+            System.out.println("Table " + t.getTableNumber() + " - Capacity: " + t.getCapacity())
+        );
+    }
+
+    private static void viewGuests(BookingService bookingService) {
+        System.out.println("\n═══ ALL GUESTS ═══");
+        bookingService.getAllGuests().forEach(g ->
+            System.out.println(g.getName() + " - " + g.getContact() + " (" + g.getNote() + ")")
+        );
+    }
 }
