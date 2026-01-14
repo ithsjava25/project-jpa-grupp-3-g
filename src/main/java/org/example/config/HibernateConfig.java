@@ -16,7 +16,7 @@ public class HibernateConfig {
     public static EntityManagerFactory getEntityManagerFactory(Map<String, String> extraProperties) {
 
         if (emf == null) {
-            List<Class<?>> entities = getEntities("org.example.service");
+            List<Class<?>> entities = getEntities("org.example.entity");
 
             final PersistenceConfiguration cfg = new HibernatePersistenceConfiguration("emf")
                 .jdbcUrl("jdbc:mysql://localhost:3306/restaurant_booking")

@@ -2,9 +2,11 @@ package org.example;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 import org.example.config.HibernateConfig;
-import org.example.service.*;
+import org.example.entity.BookingStatus;
+import org.example.entity.Guest;
+import org.example.entity.Table;
+import org.example.entity.TimeSlot;
 import org.junit.jupiter.api.*;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -18,7 +20,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-import static org.example.service.BookingStatus.CANCELLED;
+import static org.example.entity.BookingStatus.CANCELLED;
 import static org.junit.Assert.assertTrue;
 
 @Testcontainers

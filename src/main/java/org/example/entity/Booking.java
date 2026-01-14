@@ -1,4 +1,4 @@
-package org.example.service;
+package org.example.entity;
 
 import jakarta.persistence.*;
 
@@ -19,7 +19,7 @@ public class Booking {
     private LocalDate date; //day of the reservation
 
     @ManyToOne
-    @JoinColumn(name="timeslot_id")
+    @JoinColumn(name="timeslot_id", nullable = false)
     private TimeSlot timeSlot; //time selected from the determited times
 
     @Column(name="party_size", nullable = false)
@@ -72,6 +72,7 @@ public class Booking {
     public void completeBooking(){
         this.status = BookingStatus.COMPLETED;
     }
+    public void pendingBooking() { this.status = BookingStatus.PENDING; }
     public void noShowBooking(){
         this.status = BookingStatus.NO_SHOW;
     }
@@ -130,10 +131,8 @@ public class Booking {
         return "Booking{" +
             "id=" + id +
             ", date=" + date +
-            ", timeSlot=" + timeSlot +
             ", party=" + partySize +
-            ", table=" + table +
-            ", guests=" + guests +
+            ", status=" + status +
             '}';
     }
 }
