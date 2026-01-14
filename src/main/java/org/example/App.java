@@ -60,8 +60,8 @@ public class App {
 
     private static void createGuest(EntityManagerFactory emf) {
         emf.runInTransaction(em -> {
-            em.persist(new Guest("Gabriela", "Bord för fyra", "072762668"));
-            em.persist(new Guest("Samuel", "Bord för 3", "072778882"));
+            em.persist(new Guest("Gabriela", "Bord för fyra", "0727626680"));
+            em.persist(new Guest("Samuel", "Bord för 3", "0727788820"));
             em.persist(new Guest("Anna", "VIP", "0701234567"));
             em.persist(new Guest("Erik", "Allergisk mot nötter", "0709876543"));
         });

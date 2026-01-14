@@ -16,7 +16,9 @@ public class BookingService {
 
     // Skapar en ny gäst med validering och skydd mot dubletter
     public Long createGuest(String name, String note, String contact) {
-
+        name = (name == null) ? null : name.trim();
+        note = (note == null) ? null : note.trim();
+        contact = (contact == null) ? null : contact.trim();
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Name cannot be empty");
         }
@@ -28,6 +30,7 @@ public class BookingService {
         if (contact == null || contact.isBlank()) {
             throw new IllegalArgumentException("Contact cannot be empty");
         }
+        contact = contact.trim().toLowerCase();
 
         // Mail och mobilnummer validering
         boolean isEmail = contact.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
@@ -37,24 +40,37 @@ public class BookingService {
             throw new IllegalArgumentException("Contact must be a valid email or phone number");
         }
 
+        String finalContact = contact;
+        String finalName = name;
+        String finalNote = note;
+        String finalName1 = name;
+        String finalNote1 = note;
+        String finalContact1 = contact;
         return emf.callInTransaction(em -> {
 
             // Befintlig guest validering
             List<Guest> existing = em.createQuery(
                     "SELECT g FROM Guest g WHERE g.contact = :contact",
                     Guest.class
-                ).setParameter("contact", contact)
+                ).setParameter("contact", finalContact)
                 .getResultList();
 
-            if (!existing.isEmpty()) {
-                System.out.println("Guest already exists, using existing record.");
-                return existing.get(0).getId();
-            }
-
-            Guest guest = new Guest(name, note, contact);
-            em.persist(guest);
-            em.flush();
-            return guest.getId();
+            if (!existing.isEmpty()) return existing.get(0).getId();
+            try {
+                Guest guest = new Guest(finalName1, finalNote1, finalContact1);
+                em.persist(guest);
+                em.flush();
+                return guest.getId();
+                } catch (jakarta.persistence.PersistenceException ex) {
+                // Likely unique constraint race: re-query and return existing if present.
+                    List<Guest> after = em.createQuery(
+                     "SELECT g FROM Guest g WHERE g.contact = :contact",
+                     Guest.class
+                        ).setParameter("contact", finalContact1)
+                    .getResultList();
+                if (!after.isEmpty()) return after.get(0).getId();
+                throw ex;
+                }
         });
     }
 
