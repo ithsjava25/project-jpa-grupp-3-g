@@ -5,7 +5,7 @@ import io.github.classgraph.ScanResult;
 import jakarta.persistence.*;
 import org.example.entity.*;
 import org.example.entity.Table;
-import org.example.service.BookingService;
+import org.example.entity.service.BookingService;
 import org.hibernate.jpa.HibernatePersistenceConfiguration;
 
 import java.time.LocalDate;
