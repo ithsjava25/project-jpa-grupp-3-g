@@ -12,6 +12,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class App {
+
+    static List<Long> tableIdList = new ArrayList<>();
+    static List<Long> timeSlotIdList = new ArrayList<>();
+    static List<Long> bookingIdList = new ArrayList<>();
+
     static void main() {
 
         EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory(null);
@@ -19,6 +24,15 @@ public class App {
         try {
             createInitialData(emf);
             BookingService bookingService = new BookingService(emf);
+
+            //Skapar listor av IDn för felhantering vid bokning
+            var tempTableList = bookingService.getAllTables();
+            tempTableList.forEach(t -> tableIdList.add(t.getId()));
+            var tempTimeSlotList = bookingService.getAllTimeSlots();
+            tempTimeSlotList.forEach(ts -> timeSlotIdList.add(ts.getId()));
+            var tempBookingIdList = bookingService.getAllBookings();
+            tempBookingIdList.forEach(b -> bookingIdList.add(b.getId()));
+
             mainMenu(bookingService, emf);
         } finally {
             if (emf != null && emf.isOpen()) {
@@ -110,6 +124,11 @@ public class App {
 
             Long timeSlotId = Long.parseLong(IO.readln("\nEnter TimeSlot ID: "));
 
+            if(!timeSlotIdList.contains(timeSlotId)){
+                System.out.println("Invalid Timeslot");
+                return;
+            }
+
             // Datum med validering
             LocalDate date = null;
             while (date == null) {
@@ -151,6 +170,11 @@ public class App {
             );
 
             Long tableId = Long.parseLong(IO.readln("\nEnter Table ID: "));
+
+            if(!tableIdList.contains(tableId)){
+                System.out.println("Invalid Table");
+                return;
+            }
 
             // validera val av bord
             boolean validTable = availableTables.stream()
@@ -236,6 +260,11 @@ public class App {
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to update: "));
 
+            if(!bookingIdList.contains(bookingId)){
+                System.out.println("Invalid ID");
+                return;
+            }
+
             String statusMenu = """
 
                 Select new status:
@@ -285,6 +314,10 @@ public class App {
 
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to delete: "));
+            if(!bookingIdList.contains(bookingId)) {
+                System.out.println("Invalid ID");
+                return;
+            }
             String confirm = IO.readln("Are you sure? (y/n): ");
 
             if (confirm.equalsIgnoreCase("y")) {
