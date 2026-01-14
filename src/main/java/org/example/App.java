@@ -1,12 +1,10 @@
 package org.example;
 
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ScanResult;
 import jakarta.persistence.*;
-import org.example.entity.*;
+import org.example.config.HibernateConfig;
 import org.example.entity.Table;
-import org.example.service.BookingService;
-import org.hibernate.jpa.HibernatePersistenceConfiguration;
+import org.example.entity.*;
+import org.example.entity.service.BookingService;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -14,106 +12,54 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class App {
+    static void main() {
 
-    static List<Long> tableIdList = new ArrayList<>();
-    static List<Long> timeSlotIdList = new ArrayList<>();
-    static List<Long> bookingIdList = new ArrayList<>();
+        EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory(null);
 
-    public static void main(String[] args) {
-
-        List<Class<?>> entities = getEntities("org.example.entity");
-
-        final PersistenceConfiguration cfg = new HibernatePersistenceConfiguration("emf")
-            .jdbcUrl("jdbc:mysql://localhost:3306/restaurant_booking")
-            .jdbcUsername("root")
-            .jdbcPassword("root123")
-            .property("hibernate.connection.provider_class", "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
-            .property("hibernate.hikari.maximumPoolSize", "10")
-            .property("hibernate.hikari.minimumIdle", "5")
-            .property("hibernate.hikari.idleTimeout", "300000")
-            .property("hibernate.hikari.connectionTimeout", "20000")
-            .property("hibernate.hbm2ddl.auto", "update")
-            .property("hibernate.show_sql", "true")
-            .property("hibernate.format_sql", "true")
-            .property("hibernate.highlight_sql", "true")
-            .managedClasses(entities);
-
-        try (EntityManagerFactory emf = cfg.createEntityManagerFactory()) {
-
-            // Skapa initial data om den inte finns
+        try {
             createInitialData(emf);
-
-            // Starta huvudmeny
             BookingService bookingService = new BookingService(emf);
-
-            //Skapar listor av IDn för felhantering vid bokning
-            var tempTableList = bookingService.getAllTables();
-            tempTableList.forEach(t -> tableIdList.add(t.getId()));
-            var tempTimeSlotList = bookingService.getAllTimeSlots();
-            tempTimeSlotList.forEach(ts -> timeSlotIdList.add(ts.getId()));
-            var tempBookingIdList = bookingService.getAllBookings();
-            tempBookingIdList.forEach(b -> bookingIdList.add(b.getId()));
-
             mainMenu(bookingService, emf);
-
+        } finally {
+            if (emf != null && emf.isOpen()) {
+                emf.close();
+            }
         }
     }
 
     private static void createInitialData(EntityManagerFactory emf) {
         // Kolla om data redan finns
         Long count = emf.callInTransaction(em ->
-            em.createQuery("SELECT COUNT(t) FROM Table t", Long.class).getSingleResult()
+            em.createQuery("SELECT COUNT(ts) FROM TimeSlot ts", Long.class).getSingleResult()
         );
 
         if (count == 0) {
             hours(emf);
-            createTable(emf);
             createGuest(emf);
             System.out.println("Initial data created!");
+            System.out.println("Create tables manually in the database if necessary!");
         }
     }
 
     private static void createGuest(EntityManagerFactory emf) {
         emf.runInTransaction(em -> {
-            em.persist(new Guest("Gabriela", "Bord för fyra", "072762668"));
-            em.persist(new Guest("Samuel", "Bord för 3", "072778882"));
+            em.persist(new Guest("Gabriela", "Bord för fyra", "0727626680"));
+            em.persist(new Guest("Samuel", "Bord för 3", "0727788820"));
             em.persist(new Guest("Anna", "VIP", "0701234567"));
             em.persist(new Guest("Erik", "Allergisk mot nötter", "0709876543"));
-        });
-    }
-
-    private static void createTable(EntityManagerFactory emf) {
-        emf.runInTransaction(em -> {
-            for (int i = 1; i <= 5; i++) {
-                Table table = new Table();
-                table.setTableNumber(String.valueOf(i));
-                table.setCapacity(i == 4 ? 6 : (i % 2 == 0 ? 2 : 4));
-                em.persist(table);
-            }
         });
     }
 
     private static void hours(EntityManagerFactory emf) {
         emf.runInTransaction(em -> {
             String[] times = {"16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"};
-            for (int i = 0; i < times.length; i++) {
-                String start = times[i];
+            for (String start : times) {
                 String[] parts = start.split(":");
                 int hour = Integer.parseInt(parts[0]) + 2;
                 String end = hour + ":" + parts[1];
                 em.persist(new TimeSlot(start, end));
             }
         });
-    }
-
-    private static List<Class<?>> getEntities(String pkg) {
-        try (ScanResult scanResult = new ClassGraph()
-            .enableClassInfo()
-            .enableAnnotationInfo()
-            .acceptPackages(pkg)
-            .scan()) {
-            return scanResult.getClassesWithAnnotation(Entity.class).loadClasses();
-        }
     }
 
     public static void mainMenu(BookingService bookingService, EntityManagerFactory emf) {
@@ -129,7 +75,7 @@ public class App {
                 ║ 3. VIEW ALL BOOKINGS               ║
                 ║ 4. DELETE BOOKING                  ║
                 ║ 5. VIEW TABLES                     ║
-                ║ 6. VIEW GUESTS                     ║
+                ║ 6. VIEW-DELETE GUESTS              ║
                 ║ 7. EXIT                            ║
                 ╚════════════════════════════════════╝
                 """;
@@ -156,17 +102,6 @@ public class App {
         System.out.println("\n═══ CREATE NEW BOOKING ═══");
 
         try {
-            // Visa tillgängliga bord
-            List<Table> tables = bookingService.getAllTables();
-            System.out.println("\n📋 Available Tables:");
-            tables.forEach(t -> System.out.println("  " + t.getId() + ". Table " + t.getTableNumber() + " (Capacity: " + t.getCapacity() + ")"));
-
-            Long tableId = Long.parseLong(IO.readln("\nEnter Table ID: "));
-
-            if(!tableIdList.contains(tableId)){
-                System.out.println("Invalid Table");
-                return;
-            }
 
             // Visa tillgängliga tider
             List<TimeSlot> timeSlots = bookingService.getAllTimeSlots();
@@ -174,11 +109,6 @@ public class App {
             timeSlots.forEach(ts -> System.out.println("  " + ts.getId() + ". " + ts.getStartTime() + " - " + ts.getFinishTime()));
 
             Long timeSlotId = Long.parseLong(IO.readln("\nEnter TimeSlot ID: "));
-
-            if(!timeSlotIdList.contains(timeSlotId)){
-                System.out.println("Invalid Timeslot");
-                return;
-            }
 
             // Datum med validering
             LocalDate date = null;
@@ -189,7 +119,7 @@ public class App {
 
                     // Validera att datumet är korrekt
                     LocalDate today = LocalDate.now();
-                    // hur många månader fram man kan boka
+                    // hur många månader fram man kan boka(kan ä
                     LocalDate maxDate = today.plusMonths(3);
 
                     if (date.isBefore(today)) {
@@ -203,6 +133,34 @@ public class App {
                     System.out.println("Invalid date format! Please use YYYY-MM-DD");
                 }
             }
+
+            // Visa tillgängliga bord för valt tid och datum
+            List<Table> availableTables =
+                bookingService.getAvailableTables(date, timeSlotId);
+
+            if (availableTables.isEmpty()) {
+                System.out.println("No available tables for this date and time.");
+                return;
+            }
+
+            System.out.println("\n📋 Available Tables:");
+            availableTables.forEach(t ->
+                System.out.println("  " + t.getId() +
+                    ". Table " + t.getTableNumber() +
+                    " (Capacity: " + t.getCapacity() + ")")
+            );
+
+            Long tableId = Long.parseLong(IO.readln("\nEnter Table ID: "));
+
+            // validera val av bord
+            boolean validTable = availableTables.stream()
+                .anyMatch(t -> t.getId().equals(tableId));
+
+            if (!validTable) {
+                System.out.println("Invalid table selection.");
+                return;
+            }
+
 
             // Antal gäster
             int partySize = Integer.parseInt(IO.readln("\nEnter party size: "));
@@ -237,7 +195,6 @@ public class App {
                     try {
                         Long newGuestId = bookingService.createGuest(name, note, contact);
                         guestIds.add(newGuestId);
-                        System.out.println("Guest created successfully!");
                     } catch (Exception e) {
                         System.out.println("Error creating guest: " + e.getMessage());
                     }
@@ -279,20 +236,15 @@ public class App {
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to update: "));
 
-            if(!bookingIdList.contains(bookingId)){
-                System.out.println("Invalid ID");
-                return;
-            }
-
             String statusMenu = """
 
-            Select new status:
-            1. PENDING
-            2. CONFIRMED
-            3. CANCELLED
-            4. COMPLETED
-            5. NO_SHOW
-            """;
+                Select new status:
+                1. PENDING
+                2. CONFIRMED
+                3. CANCELLED
+                4. COMPLETED
+                5. NO_SHOW
+                """;
 
             String choice = IO.readln(statusMenu + "\nEnter choice: ");
 
@@ -319,8 +271,6 @@ public class App {
         }
     }
 
-
-
     private static void deleteBookingMenu(BookingService bookingService) {
         System.out.println("\n═══ DELETE BOOKING ═══");
 
@@ -335,12 +285,6 @@ public class App {
 
         try {
             Long bookingId = Long.parseLong(IO.readln("\nEnter Booking ID to delete: "));
-
-            if(!bookingIdList.contains(bookingId)) {
-                System.out.println("Invalid ID");
-                return;
-            }
-
             String confirm = IO.readln("Are you sure? (y/n): ");
 
             if (confirm.equalsIgnoreCase("y")) {
@@ -390,5 +334,44 @@ public class App {
         bookingService.getAllGuests().forEach(g ->
             System.out.println(g.getName() + " - " + g.getContact() + " (" + g.getNote() + ")")
         );
+
+        // Val för att ta bort en gäst
+        String deleteChoice = IO.readln("\nDo you want to delete a guest? (y/n): ").trim();
+        if (!deleteChoice.equalsIgnoreCase("y")) return;
+
+        // Hämta endast gäster utan bokningar
+        List<Guest> deletableGuests = bookingService.getGuestsWithoutBookings();
+
+        // Visa meddelande om listan är tomt
+        if (deletableGuests.isEmpty()) {
+            System.out.println("No guests available for deletion (all have bookings).");
+            return;
+        }
+        // Visa listan med guest som inte är kopplade till en booking
+        System.out.println("\n═══ GUESTS WITHOUT BOOKINGS ═══");
+        deletableGuests.forEach(g ->
+            System.out.println(g.getId() + ". " + g.getName() + " - " + g.getContact())
+        );
+        // Ta bort guest
+        try {
+            Long guestId = Long.parseLong(IO.readln("\nEnter Guest ID to delete: "));
+
+            boolean exists = deletableGuests.stream().anyMatch(g -> g.getId().equals(guestId));
+            if (!exists) {
+                System.out.println("Invalid guest ID.");
+                return;
+            }
+
+            String confirm = IO.readln("Are you sure you want to delete this guest? (y/n): ").trim();
+            if (confirm.equalsIgnoreCase("y")) {
+                bookingService.deleteGuest(guestId);
+                System.out.println("Guest deleted successfully!");
+            } else {
+                System.out.println("Deletion cancelled.");
+            }
+
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid ID format!");
+        }
     }
 }

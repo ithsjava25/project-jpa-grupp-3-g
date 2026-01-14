@@ -19,7 +19,7 @@ public class Booking {
     private LocalDate date; //day of the reservation
 
     @ManyToOne
-    @JoinColumn(name="timeslot_id")
+    @JoinColumn(name="timeslot_id", nullable = false)
     private TimeSlot timeSlot; //time selected from the determited times
 
     @Column(name="party_size", nullable = false)
@@ -40,8 +40,7 @@ public class Booking {
         inverseJoinColumns = @JoinColumn (name = "guest_id"))
     private List<Guest> guests = new ArrayList<>();
 
-    public Booking(Long id, LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
-        this.id = id;
+    public Booking(LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
         this.date = date;
         this.timeSlot = timeSlot;
         this.partySize = partySize;
@@ -52,7 +51,7 @@ public class Booking {
     }
 
     public void addGuest(Guest guest){
-        guests.add(guest);
+        this.guests.add(guest);
         guest.getBookings().add(this);
     }
 
@@ -73,6 +72,7 @@ public class Booking {
     public void completeBooking(){
         this.status = BookingStatus.COMPLETED;
     }
+    public void pendingBooking() { this.status = BookingStatus.PENDING; }
     public void noShowBooking(){
         this.status = BookingStatus.NO_SHOW;
     }
@@ -131,10 +131,8 @@ public class Booking {
         return "Booking{" +
             "id=" + id +
             ", date=" + date +
-            ", timeSlot=" + timeSlot +
             ", party=" + partySize +
-            ", table=" + table +
-            ", guests=" + guests +
+            ", status=" + status +
             '}';
     }
 }

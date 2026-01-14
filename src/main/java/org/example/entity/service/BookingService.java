@@ -1,10 +1,13 @@
-package org.example.service;
+package org.example.entity.service;
 
 import jakarta.persistence.EntityManagerFactory;
 import org.example.entity.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
+
+import static org.example.entity.BookingStatus.*;
 
 public class BookingService {
 
@@ -14,15 +17,92 @@ public class BookingService {
         this.emf = emf;
     }
 
-    // Skapa gäst
+    // Skapar en ny gäst med validering och skydd mot dubletter
     public Long createGuest(String name, String note, String contact) {
+        name = (name == null) ? null : name.trim();
+        note = (note == null) ? null : note.trim();
+        contact = (contact == null) ? null : contact.trim();
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Name cannot be empty");
+        }
+
+        if (name.length() > 50) {
+            throw new IllegalArgumentException("Name is too long (max 50 characters)");
+        }
+
+        if (contact == null || contact.isBlank()) {
+            throw new IllegalArgumentException("Contact cannot be empty");
+        }
+        contact = contact.trim().toLowerCase();
+
+        // Mail och mobilnummer validering
+        boolean isEmail = contact.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
+        boolean isPhone = contact.matches("^\\d{10}$");
+
+        if (!isEmail && !isPhone) {
+            throw new IllegalArgumentException("Contact must be a valid email or phone number");
+        }
+
+        String finalContact = contact;
+        String finalName = name;
+        String finalNote = note;
+        String finalName1 = name;
+        String finalNote1 = note;
+        String finalContact1 = contact;
         return emf.callInTransaction(em -> {
-            Guest guest = new Guest(name, note, contact);
-            em.persist(guest);
-            em.flush();
-            return guest.getId();
+
+            // Befintlig guest validering
+            List<Guest> existing = em.createQuery(
+                    "SELECT g FROM Guest g WHERE g.contact = :contact",
+                    Guest.class
+                ).setParameter("contact", finalContact)
+                .getResultList();
+
+            if (!existing.isEmpty()) return existing.get(0).getId();
+            try {
+                Guest guest = new Guest(finalName1, finalNote1, finalContact1);
+                em.persist(guest);
+                em.flush();
+                return guest.getId();
+                } catch (jakarta.persistence.PersistenceException ex) {
+                // Likely unique constraint race: re-query and return existing if present.
+                    List<Guest> after = em.createQuery(
+                     "SELECT g FROM Guest g WHERE g.contact = :contact",
+                     Guest.class
+                        ).setParameter("contact", finalContact1)
+                    .getResultList();
+                if (!after.isEmpty()) return after.get(0).getId();
+                throw ex;
+                }
         });
     }
+
+    // Tar bort en gäst endast om den inte har bokningar
+
+    public void deleteGuest(Long guestId) {
+
+        emf.runInTransaction(em -> {
+
+            Guest guest = em.find(Guest.class, guestId);
+            if (guest == null) {
+                throw new IllegalArgumentException("Guest not found");
+            }
+
+            Long count = em.createQuery(
+                    "SELECT COUNT(b) FROM Booking b JOIN b.guests g WHERE g.id = :gid",
+                    Long.class
+                ).setParameter("gid", guestId)
+                .getSingleResult();
+
+            if (count > 0) {
+                throw new IllegalStateException("Cannot delete guest with existing bookings");
+            }
+
+            em.remove(guest);
+        });
+    }
+
+
 
     // Skapa bokning MED validering
     public void createBooking(Long tableId, Long timeSlotId, LocalDate date, int partySize, List<Long> guestIds) {
@@ -68,12 +148,13 @@ public class BookingService {
                         "WHERE b.table.id = :tableId " +
                         "AND b.date = :date " +
                         "AND b.timeSlot.id = :timeSlotId " +
-                        "AND b.status != 'CANCELLED'",
+                        "AND b.status != :cancelledStatus",
                     Long.class
                 )
                 .setParameter("tableId", tableId)
                 .setParameter("date", date)
                 .setParameter("timeSlotId", timeSlotId)
+                .setParameter("cancelledStatus", BookingStatus.CANCELLED)
                 .getSingleResult();
 
             if (existingBookings > 0) {
@@ -87,6 +168,12 @@ public class BookingService {
             // 6. Validera att minst en gäst finns
             if (guestIds == null || guestIds.isEmpty()) {
                 throw new IllegalArgumentException("Booking must have at least one guest!");
+            }
+            // Validering antalet guest får inte överstiga party size
+            if (guestIds.size() > partySize) {
+                throw new IllegalArgumentException(
+                    "Number of registered guests cannot exceed party size."
+                );
             }
 
             // 7. Skapa bokning
@@ -141,7 +228,7 @@ public class BookingService {
         );
     }
 
-    public Booking getBooking(Long id) {
+    public Optional<Booking> getBooking(Long id) {
         return emf.callInTransaction(em ->
             em.createQuery(
                     "SELECT b FROM Booking b " +
@@ -152,7 +239,8 @@ public class BookingService {
                     Booking.class
                 )
                 .setParameter("id", id)
-                .getSingleResult()
+                .getResultStream()
+                .findFirst()
         );
     }
 
@@ -186,7 +274,10 @@ public class BookingService {
                     )
                     .setParameter("id", bookingId)
                     .getSingleResult();
-
+                for (Guest g : booking.getGuests()) {
+                    g.getBookings().remove(booking);
+                }
+                booking.getGuests().clear();
                 em.remove(booking);
                 System.out.println("Booking deleted successfully!");
 
@@ -204,12 +295,24 @@ public class BookingService {
                         "(SELECT b.table.id FROM Booking b " +
                         "WHERE b.date = :date " +
                         "AND b.timeSlot.id = :timeSlotId " +
-                        "AND b.status != 'CANCELLED')",
+                        "AND b.status != :cancelledStatus)",
                     Table.class
                 )
                 .setParameter("date", date)
                 .setParameter("timeSlotId", timeSlotId)
+                .setParameter("cancelledStatus", BookingStatus.CANCELLED)
                 .getResultList()
         );
     }
+    // Hitta guest utan booking
+    public List<Guest> getGuestsWithoutBookings() {
+        return emf.callInTransaction(em ->
+            em.createQuery(
+                "SELECT g FROM Guest g WHERE g.bookings IS EMPTY",
+                Guest.class
+            ).getResultList()
+        );
+    }
+
+
 }
