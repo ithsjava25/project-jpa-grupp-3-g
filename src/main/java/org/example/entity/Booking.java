@@ -40,8 +40,18 @@ public class Booking {
         inverseJoinColumns = @JoinColumn (name = "guest_id"))
     private List<Guest> guests = new ArrayList<>();
 
+    public Booking(LocalDate date, TimeSlot timeSlot, int partySize, Table table, List<Guest> guests) {
+        this.date = date;
+        this.timeSlot = timeSlot;
+        this.partySize = partySize;
+        this.table = table;
+        this.guests = guests;
+        this.status = BookingStatus.PENDING;
+
+    }
+
     public void addGuest(Guest guest){
-        guests.add(guest);
+        this.guests.add(guest);
         guest.getBookings().add(this);
     }
 

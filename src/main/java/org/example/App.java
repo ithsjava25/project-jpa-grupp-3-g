@@ -1,12 +1,10 @@
 package org.example;
 
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ScanResult;
 import jakarta.persistence.*;
-import org.example.entity.*;
+import org.example.config.HibernateConfig;
 import org.example.entity.Table;
+import org.example.entity.*;
 import org.example.entity.service.BookingService;
-import org.hibernate.jpa.HibernatePersistenceConfiguration;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -14,34 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class App {
-    public static void main(String[] args) {
+    static void main() {
 
-        List<Class<?>> entities = getEntities("org.example.entity");
+        EntityManagerFactory emf = HibernateConfig.getEntityManagerFactory(null);
 
-        final PersistenceConfiguration cfg = new HibernatePersistenceConfiguration("emf")
-            .jdbcUrl("jdbc:mysql://localhost:3306/restaurant_booking")
-            .jdbcUsername(System.getenv("MYSQL_USER"))
-            .jdbcPassword(System.getenv("MYSQL_ROOT_PASSWORD"))
-            .property("hibernate.connection.provider_class", "org.hibernate.hikaricp.internal.HikariCPConnectionProvider")
-            .property("hibernate.hikari.maximumPoolSize", "10")
-            .property("hibernate.hikari.minimumIdle", "5")
-            .property("hibernate.hikari.idleTimeout", "300000")
-            .property("hibernate.hikari.connectionTimeout", "20000")
-            .property("hibernate.hbm2ddl.auto", "update")
-            .property("hibernate.show_sql", "true")
-            .property("hibernate.format_sql", "true")
-            .property("hibernate.highlight_sql", "true")
-            .managedClasses(entities);
-
-        try (EntityManagerFactory emf = cfg.createEntityManagerFactory()) {
-
-            // Skapa initial data om den inte finns
+        try {
             createInitialData(emf);
-
-            // Starta huvudmeny
             BookingService bookingService = new BookingService(emf);
             mainMenu(bookingService, emf);
-
+        } finally {
+            if (emf != null && emf.isOpen()) {
+                emf.close();
+            }
         }
     }
 
@@ -78,16 +60,6 @@ public class App {
                 em.persist(new TimeSlot(start, end));
             }
         });
-    }
-
-    private static List<Class<?>> getEntities(String pkg) {
-        try (ScanResult scanResult = new ClassGraph()
-            .enableClassInfo()
-            .enableAnnotationInfo()
-            .acceptPackages(pkg)
-            .scan()) {
-            return scanResult.getClassesWithAnnotation(Entity.class).loadClasses();
-        }
     }
 
     public static void mainMenu(BookingService bookingService, EntityManagerFactory emf) {
@@ -266,13 +238,13 @@ public class App {
 
             String statusMenu = """
 
-            Select new status:
-            1. PENDING
-            2. CONFIRMED
-            3. CANCELLED
-            4. COMPLETED
-            5. NO_SHOW
-            """;
+                Select new status:
+                1. PENDING
+                2. CONFIRMED
+                3. CANCELLED
+                4. COMPLETED
+                5. NO_SHOW
+                """;
 
             String choice = IO.readln(statusMenu + "\nEnter choice: ");
 
@@ -298,8 +270,6 @@ public class App {
             System.out.println("Invalid ID format!");
         }
     }
-
-
 
     private static void deleteBookingMenu(BookingService bookingService) {
         System.out.println("\n═══ DELETE BOOKING ═══");
@@ -404,5 +374,4 @@ public class App {
             System.out.println("Invalid ID format!");
         }
     }
-
 }

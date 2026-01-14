@@ -7,6 +7,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.example.entity.BookingStatus.*;
+
 public class BookingService {
 
     private final EntityManagerFactory emf;
