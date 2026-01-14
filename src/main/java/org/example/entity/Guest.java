@@ -20,7 +20,7 @@ public class Guest {
     @Column(name="Note", nullable = false)
     private String note;
 
-    @Column(name="Contact_info", nullable = false)
+    @Column(name="Contact_info", nullable = false, unique = true)
     private String contact;
 
     @ManyToMany(mappedBy = "guests")

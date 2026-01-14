@@ -9,15 +9,14 @@ import java.util.Objects;
 
 @Entity
 @jakarta.persistence.Table(name = "Tables")
-
 public class Table {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-   @OneToMany(mappedBy = "table", cascade = CascadeType.PERSIST)
-   private List<Booking> bookings = new ArrayList<>();
-
+    @OneToMany(mappedBy = "table", cascade = CascadeType.PERSIST)
+    private List<Booking> bookings = new ArrayList<>();
 
     @Column(name="table_number", nullable = false, unique = true)
     private String tableNumber;
@@ -29,28 +28,20 @@ public class Table {
     public Table(int capacity, String tableNumber){
         this.capacity = capacity;
         this.tableNumber = tableNumber;
-
     }
-
-    public List<Booking> getBookings() {
-        return bookings;
-    }
+    public List<Booking> getBookings() { return bookings; }
 
     public void setBookings(List<Booking> bookings) {
         this.bookings = bookings;
     }
 
-    public String getTableNumber() {
-        return tableNumber;
-    }
+    public String getTableNumber() { return tableNumber; }
 
     public void setTableNumber(String tableNumber) {
         this.tableNumber = tableNumber;
     }
 
-    public int getCapacity() {
-        return capacity;
-    }
+    public int getCapacity() { return capacity; }
 
     public void setCapacity(int capacity) {
         this.capacity = capacity;
@@ -62,8 +53,6 @@ public class Table {
         this.id = id;
     }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
 }
